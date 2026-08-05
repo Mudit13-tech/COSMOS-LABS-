@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cosmos Lab -- Telemetry Terminal</title>
+  <link rel="stylesheet" href="/css/tokens.css?v=2" />
+  <link rel="stylesheet" href="/css/base.css?v=3" />
+  <link rel="stylesheet" href="/css/login.css" />
+</head>
+
+<body>
+  <div class="login-scene">
+    <canvas id="login-planet" class="login-planet-canvas" aria-hidden="true"></canvas>
+  </div>
+
+  <main class="login-wrap">
+    <form id="login-form" class="glass-panel corner-brackets login-panel" novalidate>
+      <svg class="stitch-overlay" xmlns="http://www.w3.org/2000/svg">
+        <rect class="stitch-layer layer-1" x="2" y="2" rx="10" />
+        <rect class="stitch-layer layer-2" x="2" y="2" rx="10" />
+        <rect class="stitch-layer layer-3" x="2" y="2" rx="10" />
+      </svg>
+      <div class="login-brand">
+        <div class="login-logo-container">
+          <svg class="brand-logo" width="36" height="36" viewBox="0 0 100 100" fill="none"
+            xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="12" fill="var(--accent)" filter="drop-shadow(0 0 8px var(--accent))" />
+            <ellipse cx="50" cy="50" rx="45" ry="15" stroke="var(--accent-strong)" stroke-width="3"
+              transform="rotate(30 50 50)" />
+            <ellipse cx="50" cy="50" rx="45" ry="15" stroke="#ffffff" stroke-width="2" transform="rotate(-30 50 50)" />
+            <ellipse cx="50" cy="50" rx="45" ry="15" stroke="var(--accent)" stroke-width="2"
+              transform="rotate(90 50 50)" />
+          </svg>
+          <h1>COSMOS LAB</h1>
+        </div>
+        <div class="tagline">Telemetry Terminal</div>
+      </div>
+
+      <div class="field">
+        <label for="email">Identify / Cmdr_Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" placeholder="Enter identification..."
+          required />
+      </div>
+
+      <div class="field">
+        <label for="password">Verify / Passcode</label>
+        <input id="password" name="password" type="password" autocomplete="current-password"
+          placeholder="Enter authorization code..." required minlength="8" />
+      </div>
+
+      <div id="form-error" class="form-error" role="alert" aria-live="polite"></div>
+
+      <div class="auth-actions">
+        <button id="authenticate-btn" type="submit" class="btn btn-primary">Authenticate</button>
+        <button id="register-toggle-btn" type="button" class="btn">Register Link</button>
+      </div>
+
+      <div class="divider">Alt_Uplink</div>
+
+      <button id="google-btn" type="button" class="btn btn-google">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#FFC107"
+            d="M43.6 20.1H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.3-.1-2.7-.4-3.9z" />
+          <path fill="#FF3D00"
+            d="M6.3 14.7l6.6 4.8C14.5 15.6 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.6 4 24 4c-7.7 0-14.4 4.3-17.7 10.7z" />
+          <path fill="#4CAF50"
+            d="M24 44c5.5 0 10.4-1.9 14.2-5.1l-6.6-5.4C29.6 35.4 26.9 36 24 36c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.5 39.6 16.2 44 24 44z" />
+          <path fill="#1976D2"
+            d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.6 5.4C41.9 36 44 30.8 44 24c0-1.3-.1-2.7-.4-3.9z" />
+        </svg>
+        <span>GOOGLE LOGIN</span>
+      </button>
+
+      <a id="guest-link" href="#" class="btn-quiet guest-link">[ Initiate Local Override ]</a>
+    </form>
+  </main>
+
+  <script type="module" src="/js/login.js"></script>
+</body>
+
+</html>

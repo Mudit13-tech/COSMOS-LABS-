@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cosmos Lab -- Dashboard</title>
+  <link rel="stylesheet" href="/css/tokens.css?v=2" />
+  <link rel="stylesheet" href="/css/base.css?v=3" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+  <div class="dashboard-scene">
+    <canvas id="planet-canvas"></canvas>
+  </div>
+
+  <div class="dashboard-hud" style="display: none;">
+    <div class="hud-utility">
+      <button type="button" id="new-mission-btn" class="btn-quiet" style="color: var(--accent);">New_Mission</button>
+      <button type="button" id="reset-data-btn" class="btn-quiet">Reset_Data</button>
+      <button type="button" id="terminate-link-btn" class="btn-quiet">Terminate_Link</button>
+    </div>
+
+    <div class="hud-body">
+      <section class="phase-column">
+        <div class="hud-brand-container">
+          <svg class="brand-logo" width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="12" fill="var(--accent)" filter="drop-shadow(0 0 8px var(--accent))" />
+            <ellipse cx="50" cy="50" rx="45" ry="15" stroke="var(--accent-strong)" stroke-width="3" transform="rotate(30 50 50)" />
+            <ellipse cx="50" cy="50" rx="45" ry="15" stroke="#ffffff" stroke-width="2" transform="rotate(-30 50 50)" />
+            <ellipse cx="50" cy="50" rx="45" ry="15" stroke="var(--accent)" stroke-width="2" transform="rotate(90 50 50)" />
+          </svg>
+          <h1 class="hud-brand">COSMOS LAB</h1>
+        </div>
+        <div class="hud-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-text">TELEMETRY LIVE</span>
+          <span class="status-sep">|</span>
+          <span id="hud-email" class="status-email"></span>
+        </div>
+        <div id="guest-banner" class="guest-banner">
+          Guest session -- link an account to save your progress.
+        </div>
+
+        <div class="phase-breadcrumb" id="phase-breadcrumb">MERCURY -- PHASE 1</div>
+        <div class="phase-heading-row">
+          <button type="button" class="phase-nav-btn" id="phase-prev" aria-label="Previous phase">&#8249;</button>
+          <h2 id="phase-heading">Phase 1</h2>
+          <button type="button" class="phase-nav-btn" id="phase-next" aria-label="Next phase">&#8250;</button>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat stat-completion">
+            <span class="stat-label">Completion</span>
+            <span class="stat-value" id="stat-completion">0%</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Burns</span>
+            <span class="stat-value" id="stat-burns">0/0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Hours</span>
+            <span class="stat-value" id="stat-hours">0.0</span>
+          </div>
+          <div class="stat stat-streak">
+            <span class="stat-label">Streak</span>
+            <span class="stat-value" id="stat-streak">0</span>
+          </div>
+        </div>
+
+        <div class="day-timeline" id="day-timeline" aria-live="off"></div>
+        <div class="sr-only" id="day-status-live" aria-live="polite"></div>
+      </section>
+
+      <section class="planet-viewport">
+        <div class="zoom-control glass-panel" id="zoom-control">
+          <span class="zoom-value" id="zoom-value">100%</span>
+          <button type="button" id="zoom-out" aria-label="Zoom out">&minus;</button>
+          <span aria-hidden="true">|</span>
+          <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" id="zoom-reset" class="zoom-reset">Reset</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module" src="/js/dashboard-v18.js"></script>
+</body>
+</html>
