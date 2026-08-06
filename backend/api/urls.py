@@ -6,7 +6,7 @@ urlpatterns = [
     # Auth
     path('auth/register/', views.register, name='register'),
     path('auth/login/', views.login_view, name='login'),
-    path('auth/google/', views.google_login_view, name='google_login'),
+
     path('auth/logout/', views.logout_view, name='logout'),
     path('auth/me/', views.me, name='me'),
 

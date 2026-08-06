@@ -18,8 +18,6 @@ from .models import Plan, Phase, Day, Task, Progress
 
 from google import genai
 from google.genai import types
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 
 try:
     from groq import Groq
@@ -95,55 +93,6 @@ def login_view(request):
             'name': getattr(user, 'first_name', '') or (getattr(user, 'email', None) or email or '').split('@')[0],
         }
     })
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def google_login_view(request):
-    """Log in with Google ID token."""
-    data = json_body(request)
-    token = data.get('token')
-    
-    if not token:
-        return JsonResponse({'error': 'Token is required.'}, status=400)
-        
-    client_id = settings.GOOGLE_CLIENT_ID
-    if not client_id:
-        return JsonResponse({'error': 'Google Sign-In is not configured on the server.'}, status=500)
-        
-    try:
-        # Verify the token
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
-        
-        email = idinfo.get('email')
-        if not email:
-            return JsonResponse({'error': 'Google token did not contain an email address.'}, status=400)
-            
-        name = idinfo.get('name', email.split('@')[0])
-        
-        # Find or create user
-        user, created = User.objects.get_or_create(username=email, defaults={'email': email, 'first_name': name})
-        
-        # If user existed but didn't have a name, update it (optional)
-        if not created and not user.first_name and name:
-            user.first_name = name
-            user.save()
-            
-        # Log the user in
-        login(request, user)
-        
-        return JsonResponse({
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'name': user.first_name or email.split('@')[0],
-            }
-        })
-        
-    except ValueError:
-        return JsonResponse({'error': 'Invalid Google token.'}, status=401)
-    except Exception as e:
-        traceback.print_exc()
-        return JsonResponse({'error': 'Failed to verify Google token.'}, status=500)
 
 
 

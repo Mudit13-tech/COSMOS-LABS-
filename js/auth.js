@@ -1,6 +1,6 @@
 // js/auth.js
 // Authentication module — uses Django session auth instead of Firebase.
-import { apiRegister, apiLogin, apiGoogleLogin, apiLogout, apiGetMe } from "./api.js";
+import { apiRegister, apiLogin, apiLogout, apiGetMe } from "./api.js";
 import { createStore } from "./store.js";
 
 export const authStore = createStore({
@@ -57,18 +57,6 @@ export async function signInEmail(email, password) {
   try {
     authStore.setState({ error: null });
     const data = await apiLogin(email, password);
-    authStore.setState({ user: data.user, loading: false, error: null, isGuest: false });
-    return data.user;
-  } catch (err) {
-    authStore.setState({ error: err.message });
-    throw err;
-  }
-}
-
-export async function signInGoogle(token) {
-  try {
-    authStore.setState({ error: null });
-    const data = await apiGoogleLogin(token);
     authStore.setState({ user: data.user, loading: false, error: null, isGuest: false });
     return data.user;
   } catch (err) {

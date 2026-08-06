@@ -43,9 +43,6 @@ export async function apiLogin(email, password) {
   return request('POST', '/auth/login/', { email, password });
 }
 
-export async function apiGoogleLogin(token) {
-  return request('POST', '/auth/google/', { token });
-}
 
 export async function apiLogout() {
   return request('POST', '/auth/logout/');

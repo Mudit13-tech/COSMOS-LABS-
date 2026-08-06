@@ -1,6 +1,6 @@
 // js/login.js
 // Login page controller — uses Django session auth via api.js
-import { signUpEmail, signInEmail, signInGoogle, enableGuestMode } from "./auth.js";
+import { signUpEmail, signInEmail, enableGuestMode } from "./auth.js";
 import { initPlanetScene } from "./scene.js";
 
 let mode = "login"; // or "signup"
@@ -11,7 +11,7 @@ const passwordInput = document.getElementById("password");
 const errorEl = document.getElementById("form-error");
 const authenticateBtn = document.getElementById("authenticate-btn");
 const registerToggleBtn = document.getElementById("register-toggle-btn");
-const googleBtn = document.getElementById("google-btn");
+
 const guestLink = document.getElementById("guest-link");
 
 function setError(message) {
@@ -20,7 +20,6 @@ function setError(message) {
 
 function setBusy(isBusy) {
   authenticateBtn.disabled = isBusy;
-  if (googleBtn) googleBtn.disabled = isBusy;
 }
 
 function applyMode() {
@@ -66,34 +65,7 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-// Google login initialization
-if (googleBtn) {
-  googleBtn.addEventListener("click", () => {
-    // You MUST replace this with your actual Google Client ID
-    const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com"; 
 
-    // We initialize here in case the GSI script hasn't loaded yet on first tick
-    if (window.google && window.google.accounts) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          try {
-            setBusy(true);
-            await signInGoogle(response.credential);
-            window.location.href = "/dashboard.html";
-          } catch (err) {
-            setError(err.message);
-          } finally {
-            setBusy(false);
-          }
-        }
-      });
-      window.google.accounts.id.prompt();
-    } else {
-      setError("Google Sign-In is still loading. Please try again.");
-    }
-  });
-}
 
 guestLink.addEventListener("click", (event) => {
   event.preventDefault();
