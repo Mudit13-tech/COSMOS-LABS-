@@ -1,0 +1,40 @@
+/* css/tokens.css */
+:root {
+  /* palette - Orbital Satellite Console */
+  --bg: #020408;
+  --bg-panel: rgba(2, 4, 8, 0.65);
+  --border: rgba(130, 144, 162, 0.25);
+  --border-strong: rgba(130, 144, 162, 0.5);
+  --text: #E0E6ED;
+  --text-dim: #8290A2;
+  --text-faint: rgba(130, 144, 162, 0.4);
+  --accent: #1cdbbc;
+  --accent-dim: rgba(28, 219, 188, 0.15);
+  --accent-strong: #40f2d4;
+  --warn: #E2A94A;
+  --danger: #e6607a;
+  
+  /* lime crush gradient */
+  --lime-crush: linear-gradient(135deg, #a8ff78, #78ffd6);
+  --lime-crush-dim: linear-gradient(135deg, rgba(168, 255, 120, 0.1), rgba(120, 255, 214, 0.1));
+
+  /* type */
+  --font-mono: "Space Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Space Grotesk", "Orbitron", "Eurostile", var(--font-mono), sans-serif;
+  --font-brand: "Inertia", var(--font-display);
+  --font-phase: "Kusanagi", var(--font-display);
+  --font-day: "HK Modular", var(--font-display);
+  --font-rest: "Orbitron", var(--font-mono);
+
+  /* radius / blur */
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --glass-blur: 16px;
+
+  /* spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 40px;
+}

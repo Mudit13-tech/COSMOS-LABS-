@@ -241,11 +241,9 @@ def generate_plan(request):
 
     # Try multiple models in order of preference
     models_to_try = [
-        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
         "gemini-2.0-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-flash-8b",
     ]
 
     genai_client = genai.Client(api_key=api_key) if api_key else None
