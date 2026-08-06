@@ -152,7 +152,7 @@
 }
 
 .phase-column {
-  width: 420px;
+  width: 480px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
