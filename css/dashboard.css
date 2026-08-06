@@ -79,7 +79,7 @@
 
 .hud-brand {
   font-family: var(--font-brand);
-  font-size: 36px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: 0.25em;
   margin: 0;
@@ -152,7 +152,7 @@
 }
 
 .phase-column {
-  width: 500px;
+  width: 360px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -160,7 +160,7 @@
   border-radius: var(--radius-lg);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   position: relative;
   transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   transform-style: preserve-3d;
@@ -217,7 +217,7 @@
 
 .phase-heading-row h2 {
   font-family: var(--font-phase);
-  font-size: 32px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -277,14 +277,14 @@
 
 .stat-value {
   font-family: var(--font-rest);
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .stat-completion .stat-value {
   color: var(--accent);
-  font-size: 32px;
+  font-size: 24px;
 }
 
 .stat-streak .stat-value {

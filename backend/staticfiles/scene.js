@@ -533,7 +533,7 @@ export function initPlanetScene(canvas, { interactive = true } = {}) {
 
       // We want to be looking at the active planet closely from an angle
       // Offset slightly to the left (-2.7), up (1.5), and front (10.5)
-      targetCamPos.copy(worldPos).add(new THREE.Vector3(-4.0 * zoomFactor, 2.5 * zoomFactor, 16.0 * zoomFactor));
+      targetCamPos.copy(worldPos).add(new THREE.Vector3(-5.0 * zoomFactor, 3.0 * zoomFactor, 20.0 * zoomFactor));
       targetLookAt.copy(worldPos);
 
       // Lerp camera position faster during warp, slower normally
