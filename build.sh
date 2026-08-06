@@ -4,9 +4,5 @@ set -o errexit
 
 cd backend
 pip install -r requirements.txt
-
-# Run migrations
+python manage.py collectstatic --no-input
 python manage.py migrate
-
-# Collect static files
-python manage.py collectstatic --noinput
