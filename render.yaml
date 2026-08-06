@@ -3,7 +3,7 @@ services:
     name: cosmos-lab
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "cd backend && gunicorn cosmoslab.wsgi:application --timeout 120"
+    startCommand: "gunicorn cosmoslab.wsgi:application --config gunicorn.conf.py"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"

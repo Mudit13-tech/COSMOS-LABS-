@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Render start script — must cd into backend/ where cosmoslab package lives
+# Render start script — gunicorn.conf.py sets chdir=backend/ internally
 set -o errexit
-cd backend
-exec gunicorn cosmoslab.wsgi:application --timeout 120 --workers 2
+exec gunicorn cosmoslab.wsgi:application --config gunicorn.conf.py
