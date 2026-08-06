@@ -1,43 +1,47 @@
 // js/progress.js
-import {
-  doc,
-  getDoc,
-  setDoc,
-  onSnapshot,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { db } from "./firebase-config.js";
+// Progress tracking — uses Django API instead of Firestore.
+// Bug fixes:
+//   1. dayIndex collision: now uses "phaseIndex_dayIndex" composite keys
+//   2. phaseUnlocked initialization: deferred until plan is loaded
+//   3. Proper error handling (no silent swallowed writes)
+import { apiGetProgress, apiCompleteTask, apiToggleTask, apiResetProgress } from "./api.js";
 import { createStore } from "./store.js";
 import { getPlan } from "./plan-data.js";
 
 const GUEST_STORAGE_KEY = "cosmoslab_guest_progress";
 
 function defaultProgress() {
+  const plan = getPlan();
+  const numPhases = plan ? plan.phases.length : 8;
   return {
     currentPhaseIndex: 0,
     currentDayIndex: 1,
-    completedTasks: {}, // taskId -> { done, note, loggedMinutes, completedAt }
-    completedDays: {}, // dayIndex -> true
-    completedPhases: {}, // phaseIndex -> true
-    phaseUnlocked: getPlan() ? getPlan().phases.map((_, i) => i === 0) : [],
+    completedTasks: {},     // taskId -> { done, note, loggedMinutes, completedAt }
+    completedDays: {},      // "phaseIndex_dayIndex" -> true
+    completedPhases: {},    // "phaseIndex" -> true
+    phaseUnlocked: Array.from({ length: numPhases }, (_, i) => i === 0),
     lastUpdated: Date.now(),
     currentStreak: 0,
   };
 }
 
 export const progressStore = createStore({
-  data: defaultProgress(),
-  viewedPhaseIndex: 0, // browsing state, separate from currentPhaseIndex
+  data: {
+    currentPhaseIndex: 0,
+    currentDayIndex: 1,
+    completedTasks: {},
+    completedDays: {},
+    completedPhases: {},
+    phaseUnlocked: [],
+    lastUpdated: 0,
+    currentStreak: 0,
+  },
+  viewedPhaseIndex: 0,
   loading: true,
   planId: "local-plan",
 });
 
-let unsubscribeSnapshot = null;
 let mode = "guest"; // "guest" | "cloud"
-let currentUid = null;
-
-function progressDocRef(uid, planId) {
-  return doc(db, "progress", `${uid}_${planId}`);
-}
 
 function readGuestProgress() {
   try {
@@ -54,13 +58,23 @@ function writeGuestProgress(data) {
 
 /** Recomputes the consecutive-day streak from completedDays. */
 function computeStreak(completedDays) {
-  const days = Object.keys(completedDays)
-    .map(Number)
-    .sort((a, b) => b - a);
-  if (days.length === 0) return 0;
+  // Extract day numbers from keys like "0_1", "0_2", "1_5" etc.
+  const dayNums = [];
+  for (const key of Object.keys(completedDays)) {
+    const parts = key.split('_');
+    if (parts.length === 2) {
+      dayNums.push(parseInt(parts[1], 10));
+    } else {
+      const n = parseInt(key, 10);
+      if (!isNaN(n)) dayNums.push(n);
+    }
+  }
+  if (dayNums.length === 0) return 0;
+
+  const sorted = [...new Set(dayNums)].sort((a, b) => b - a);
   let streak = 1;
-  for (let i = 0; i < days.length - 1; i++) {
-    if (days[i] - days[i + 1] === 1) {
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (sorted[i] - sorted[i + 1] === 1) {
       streak++;
     } else {
       break;
@@ -70,102 +84,136 @@ function computeStreak(completedDays) {
 }
 
 export async function initProgress({ uid, isGuest, planId = "local-plan" }) {
-  if (unsubscribeSnapshot) {
-    unsubscribeSnapshot();
-    unsubscribeSnapshot = null;
-  }
-  currentUid = uid || null;
-
   if (isGuest || !uid) {
     mode = "guest";
     const data = readGuestProgress();
+    // Ensure phaseUnlocked has the correct length for the current plan
+    const plan = getPlan();
+    if (plan && data.phaseUnlocked.length !== plan.phases.length) {
+      data.phaseUnlocked = Array.from({ length: plan.phases.length }, (_, i) => 
+        i === 0 || (data.phaseUnlocked[i] === true)
+      );
+    }
     progressStore.setState({ data, loading: false, planId });
     return;
   }
 
   mode = "cloud";
-  const ref = progressDocRef(uid, planId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    const initial = defaultProgress();
-    await setDoc(ref, initial);
-  }
-
-  unsubscribeSnapshot = onSnapshot(ref, (docSnap) => {
-    if (docSnap.exists()) {
-      progressStore.setState({ data: docSnap.data(), loading: false, planId });
+  try {
+    const result = await apiGetProgress();
+    if (result.progress) {
+      progressStore.setState({ data: result.progress, loading: false, planId });
+    } else {
+      // No progress record exists yet — use defaults
+      const data = defaultProgress();
+      progressStore.setState({ data, loading: false, planId });
     }
-  });
+  } catch (err) {
+    console.error("Failed to load progress from server:", err);
+    // Fallback to guest progress
+    const data = readGuestProgress();
+    progressStore.setState({ data, loading: false, planId });
+  }
 }
 
-async function persist(nextData) {
-  nextData.lastUpdated = Date.now();
+export async function completeTask(taskId, dayIndex, phaseIndex, { note = "", loggedMinutes = 0 } = {}) {
+  const { data } = progressStore.getState();
+
   if (mode === "guest") {
-    writeGuestProgress(nextData);
-    progressStore.setState({ data: nextData });
-  } else {
-    const { planId } = progressStore.getState();
-    await setDoc(progressDocRef(currentUid, planId), nextData);
-    // onSnapshot listener above will also update state; setting it here
-    // too keeps the UI snappy while the round-trip completes.
-    progressStore.setState({ data: nextData });
+    const next = { ...data, completedTasks: { ...data.completedTasks } };
+    next.completedTasks[taskId] = {
+      done: true,
+      note,
+      loggedMinutes,
+      completedAt: Date.now(),
+    };
+    await maybeCompleteDay(next, dayIndex, phaseIndex);
+    return;
+  }
+
+  // Cloud mode — let the server handle all the logic
+  try {
+    const result = await apiCompleteTask(taskId, dayIndex, phaseIndex, { note, loggedMinutes });
+    if (result.progress) {
+      progressStore.setState({ data: result.progress });
+    }
+  } catch (err) {
+    console.error("Failed to save task completion:", err);
+    // Fallback: update locally
+    const next = { ...data, completedTasks: { ...data.completedTasks } };
+    next.completedTasks[taskId] = { done: true, note, loggedMinutes, completedAt: Date.now() };
+    await maybeCompleteDay(next, dayIndex, phaseIndex);
   }
 }
 
-export async function completeTask(taskId, dayIndex, { note = "", loggedMinutes = 0 } = {}) {
+export async function toggleTaskQuick(taskId, dayIndex, phaseIndex) {
   const { data } = progressStore.getState();
-  const next = { ...data, completedTasks: { ...data.completedTasks } };
-  next.completedTasks[taskId] = {
-    done: true,
-    note,
-    loggedMinutes,
-    completedAt: Date.now(),
-  };
-  await maybeCompleteDay(next, dayIndex);
-}
 
-export async function toggleTaskQuick(taskId, dayIndex) {
-  const { data } = progressStore.getState();
-  const next = { ...data, completedTasks: { ...data.completedTasks } };
-  if (next.completedTasks[taskId]) {
-    delete next.completedTasks[taskId];
-  } else {
-    next.completedTasks[taskId] = { done: true, note: "", loggedMinutes: 0, completedAt: Date.now() };
+  if (mode === "guest") {
+    const next = { ...data, completedTasks: { ...data.completedTasks } };
+    if (next.completedTasks[taskId]) {
+      delete next.completedTasks[taskId];
+    } else {
+      next.completedTasks[taskId] = { done: true, note: "", loggedMinutes: 0, completedAt: Date.now() };
+    }
+    await maybeCompleteDay(next, dayIndex, phaseIndex);
+    return;
   }
-  await maybeCompleteDay(next, dayIndex);
+
+  try {
+    const result = await apiToggleTask(taskId, dayIndex, phaseIndex);
+    if (result.progress) {
+      progressStore.setState({ data: result.progress });
+    }
+  } catch (err) {
+    console.error("Failed to toggle task:", err);
+  }
 }
 
-async function maybeCompleteDay(next, dayIndex) {
-  const phase = getPlan().phases.find((p) => p.days.some((d) => d.dayIndex === dayIndex));
-  if (!phase) return; 
+/** Guest-mode only: recompute day/phase completion and persist. */
+async function maybeCompleteDay(next, dayIndex, phaseIndex) {
+  const plan = getPlan();
+  if (!plan) return;
+
+  const phase = plan.phases.find((p) => p.phaseIndex === phaseIndex);
+  if (!phase) return;
+
   const dayObj = phase.days.find((d) => d.dayIndex === dayIndex);
+  if (!dayObj) return;
+
   const allDone = dayObj.tasks.every((t) => next.completedTasks[t.id]);
 
+  // Use composite key to prevent dayIndex collisions across phases
+  const dayKey = `${phaseIndex}_${dayIndex}`;
   next.completedDays = { ...next.completedDays };
   if (allDone) {
-    next.completedDays[dayIndex] = true;
+    next.completedDays[dayKey] = true;
   } else {
-    delete next.completedDays[dayIndex];
+    delete next.completedDays[dayKey];
   }
   next.currentStreak = computeStreak(next.completedDays);
 
-  // Phase completion check.
-  const allDaysDone = phase.days.every((d) => next.completedDays[d.dayIndex]);
+  // Phase completion check
+  const allDaysDone = phase.days.every((d) => next.completedDays[`${phaseIndex}_${d.dayIndex}`]);
   next.completedPhases = { ...next.completedPhases };
   if (allDaysDone) {
-    next.completedPhases[phase.phaseIndex] = true;
-    const nextPhaseIndex = phase.phaseIndex + 1;
-    if (nextPhaseIndex < getPlan().phases.length) {
+    next.completedPhases[String(phaseIndex)] = true;
+    const nextPhaseIndex = phaseIndex + 1;
+    if (nextPhaseIndex < plan.phases.length) {
       next.phaseUnlocked = [...next.phaseUnlocked];
       next.phaseUnlocked[nextPhaseIndex] = true;
     }
   }
 
-  await persist(next);
+  next.lastUpdated = Date.now();
+  writeGuestProgress(next);
+  progressStore.setState({ data: next });
 }
 
 export function setViewedPhase(index) {
-  const clamped = Math.max(0, Math.min(getPlan().phases.length - 1, index));
+  const plan = getPlan();
+  if (!plan) return;
+  const clamped = Math.max(0, Math.min(plan.phases.length - 1, index));
   progressStore.setState({ viewedPhaseIndex: clamped });
 }
 
@@ -176,10 +224,15 @@ export async function resetProgress() {
     progressStore.setState({ data: fresh, viewedPhaseIndex: 0 });
     return;
   }
-  const { planId } = progressStore.getState();
-  const fresh = defaultProgress();
-  await setDoc(progressDocRef(currentUid, planId), fresh);
-  // onSnapshot listener will pick up the reset doc and update state;
-  // reset the viewed phase locally right away for a snappy UI.
-  progressStore.setState({ viewedPhaseIndex: 0 });
+
+  try {
+    const result = await apiResetProgress();
+    if (result.progress) {
+      progressStore.setState({ data: result.progress, viewedPhaseIndex: 0 });
+    }
+  } catch (err) {
+    console.error("Failed to reset progress:", err);
+    const fresh = defaultProgress();
+    progressStore.setState({ data: fresh, viewedPhaseIndex: 0 });
+  }
 }

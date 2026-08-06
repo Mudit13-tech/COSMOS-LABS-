@@ -2,3 +2,10 @@
 .env.*
 js/api.env
 firebase-debug.log
+backend/venv/
+backend/db.sqlite3
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/migrations/
+*.pyc
+node_modules/

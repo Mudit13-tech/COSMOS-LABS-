@@ -1,5 +1,6 @@
 // js/login.js
-import { signUpEmail, signInEmail, signInGoogle, enableGuestMode } from "./auth.js";
+// Login page controller — uses Django session auth via api.js
+import { signUpEmail, signInEmail, enableGuestMode } from "./auth.js";
 import { initPlanetScene } from "./scene.js";
 
 let mode = "login"; // or "signup"
@@ -19,7 +20,7 @@ function setError(message) {
 
 function setBusy(isBusy) {
   authenticateBtn.disabled = isBusy;
-  googleBtn.disabled = isBusy;
+  if (googleBtn) googleBtn.disabled = isBusy;
 }
 
 function applyMode() {
@@ -65,18 +66,10 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-googleBtn.addEventListener("click", async () => {
-  setError("");
-  setBusy(true);
-  try {
-    await signInGoogle();
-    window.location.href = "/dashboard.html";
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setBusy(false);
-  }
-});
+// Google login — hide the button since we don't have OAuth set up in Django yet
+if (googleBtn) {
+  googleBtn.style.display = "none";
+}
 
 guestLink.addEventListener("click", (event) => {
   event.preventDefault();
