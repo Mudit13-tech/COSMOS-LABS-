@@ -104,18 +104,6 @@ async function boot() {
       }
     } catch (err) {
       console.error("Failed to load plan from server:", err);
-      // Fallback to localStorage
-      const savedPlan = localStorage.getItem("cosmoslab_guest_plan_data");
-      if (savedPlan) {
-        try {
-          const parsed = JSON.parse(savedPlan);
-          if (parsed && Array.isArray(parsed.phases) && parsed.phases.length > 0) {
-            setPlan(parsed);
-            await finalizeBoot(user, isGuest, "local-plan");
-            return;
-          }
-        } catch (e) { /* ignore */ }
-      }
       showNewMissionUI();
     }
   }
