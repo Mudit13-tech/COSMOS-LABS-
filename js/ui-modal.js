@@ -43,6 +43,11 @@ export function openMissionModal({ day, task, existing = {}, onSave }) {
   overlay.className = "modal-overlay";
   overlay.innerHTML = `
     <div class="modal-panel glass-panel corner-brackets" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <svg class="stitch-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <rect class="stitch-layer layer-1" x="2" y="2" rx="4" />
+        <rect class="stitch-layer layer-2" x="2" y="2" rx="4" />
+        <rect class="stitch-layer layer-3" x="2" y="2" rx="4" />
+      </svg>
       <button type="button" class="modal-close btn-quiet" aria-label="Close mission briefing">&times;</button>
       <div class="modal-eyebrow">
         <span class="modal-day-tag">DAY ${String(day.dayIndex).padStart(2, "0")}</span>
@@ -53,6 +58,21 @@ export function openMissionModal({ day, task, existing = {}, onSave }) {
       <div class="modal-briefing">
         <div class="modal-briefing-head">&#9432; Mission Briefing</div>
         <p>${task.description || "No additional briefing for this task."}</p>
+        
+        ${task.resourceLinks && task.resourceLinks.length > 0 ? `
+          <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+            <div class="modal-briefing-head" style="margin-bottom: 0.5rem;">&#128279; Mission Resources</div>
+            <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+              ${task.resourceLinks.map(link => `
+                <li style="margin-bottom: 0.5rem; word-break: break-all;">
+                  <a href="${link}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">
+                    &#8594; ${link}
+                  </a>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ""}
       </div>
       <div class="modal-footer">
         <div class="modal-field">

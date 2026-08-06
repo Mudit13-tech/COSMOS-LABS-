@@ -15,6 +15,7 @@
 
   <div class="dashboard-hud" style="display: none;">
     <div class="hud-utility">
+      <button type="button" id="lockin-btn" class="btn-quiet" style="color: var(--warn); font-weight: bold;">Lock-in Mode</button>
       <button type="button" id="new-mission-btn" class="btn-quiet" style="color: var(--accent);">New_Mission</button>
       <button type="button" id="reset-data-btn" class="btn-quiet">Reset_Data</button>
       <button type="button" id="terminate-link-btn" class="btn-quiet">Terminate_Link</button>
@@ -80,6 +81,41 @@
           <button type="button" id="zoom-reset" class="zoom-reset">Reset</button>
         </div>
       </section>
+    </div>
+  </div>
+
+  <!-- Lock-in Setup Overlay -->
+  <div id="lockin-setup" class="lockin-overlay" style="display: none;">
+    <div class="modal-panel" style="max-width: 500px; min-height: auto;">
+      <h2 class="modal-title" style="font-size: 1.8rem;">Enter Lock-in Mode</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 2rem; font-size: 0.95rem;">Set a timer and paste a YouTube video link to focus with the solar system.</p>
+      
+      <div class="modal-field" style="margin-bottom: 1.5rem;">
+        <label>Duration (minutes)</label>
+        <input type="number" id="lockin-duration" value="25" min="1" max="180">
+      </div>
+      
+      <div class="modal-field" style="margin-bottom: 2rem;">
+        <label>YouTube Link (Optional)</label>
+        <input type="text" id="lockin-youtube" placeholder="e.g. https://www.youtube.com/watch?v=jfKfPfyJRdk">
+        <span style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 0.25rem; display: block;">Defaults to Lofi Girl radio if left empty.</span>
+      </div>
+
+      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <button id="lockin-cancel" class="modal-save" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.2);">Cancel</button>
+        <button id="lockin-start" class="modal-save" style="background: var(--warn); color: #000; border: none;">Start Focus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Lock-in HUD -->
+  <div id="lockin-active-hud" class="lockin-active" style="display: none;">
+    <div class="lockin-top">
+      <div id="lockin-timer" class="lockin-timer-text">25:00</div>
+      <button id="lockin-exit" class="btn-quiet" style="color: #fff; background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 9999px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);">Exit Lock-in</button>
+    </div>
+    <div class="lockin-bottom">
+      <div id="youtube-container" class="youtube-wrapper"></div>
     </div>
   </div>
 

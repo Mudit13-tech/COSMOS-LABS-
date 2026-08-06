@@ -43,6 +43,10 @@ export async function apiLogin(email, password) {
   return request('POST', '/auth/login/', { email, password });
 }
 
+export async function apiGoogleLogin(token) {
+  return request('POST', '/auth/google/', { token });
+}
+
 export async function apiLogout() {
   return request('POST', '/auth/logout/');
 }
@@ -59,8 +63,8 @@ export async function apiGetPlan() {
   return request('GET', '/plan/');
 }
 
-export async function apiGeneratePlan(topic) {
-  return request('POST', '/plan/generate/', { topic });
+export async function apiGeneratePlan(topic, name, duration) {
+  return request('POST', '/plan/generate/', { topic, name, duration });
 }
 
 export async function apiResetPlan() {

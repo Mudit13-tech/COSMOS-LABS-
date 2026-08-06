@@ -154,35 +154,49 @@ function showNewMissionUI() {
   overlay.style.backgroundColor = "transparent";
   
   overlay.innerHTML = `
-    <div class="mission-modal glass-panel" style="padding: 3rem; border-radius: 24px; text-align: center; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);">
-      <h2 style="font-size: 2rem; margin-bottom: 1rem; background: linear-gradient(90deg, #fff, #888); -webkit-background-clip: text; color: transparent;">What is your mission?</h2>
-      <p style="color: #aaa; margin-bottom: 2rem;">Enter your goal, and the Cosmic AI will map out your roadmap across the solar system.</p>
-      <input type="text" id="mission-input" placeholder="e.g. Learn Quantum Physics" style="width: 100%; padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 1.1rem; outline: none; margin-bottom: 1.5rem; transition: border-color 0.3s;" />
-      <button id="mission-btn" style="background: var(--lime-crush); color: #000; padding: 1rem 2rem; border-radius: 12px; font-weight: bold; cursor: pointer; border: none; font-size: 1.1rem; width: 100%; transition: transform 0.2s;">Generate Roadmap</button>
-      <div id="loading-container" style="display: none; margin-top: 1rem;">
-        <p style="color: var(--lime-crush); margin-bottom: 1rem;">Mapping coordinates...</p>
-        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
-          <div id="loading-bar" style="width: 0%; height: 100%; background: var(--lime-crush); border-radius: 4px; transition: width 0.5s ease-out; box-shadow: 0 0 10px var(--lime-crush);"></div>
+    <div class="modal-panel" style="max-width: 500px; min-height: auto;">
+      <h2 class="modal-title" style="font-size: 1.8rem; text-align: center;">What is your mission?</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 2rem; text-align: center; font-size: 0.95rem;">Enter your goal, and the Cosmic AI will map out your roadmap across the solar system.</p>
+      
+      <div class="modal-field" style="margin-bottom: 1rem;">
+        <input type="text" id="mission-name" placeholder="Your Name (e.g. Commander Shepard)" />
+      </div>
+      <div class="modal-field" style="margin-bottom: 1rem;">
+        <input type="text" id="mission-input" placeholder="e.g. Learn Quantum Physics" />
+      </div>
+      <div class="modal-field" style="margin-bottom: 2rem;">
+        <input type="text" id="mission-duration" placeholder="Duration (e.g. 1 month, 2 weeks)" />
+      </div>
+      
+      <button id="mission-btn" class="modal-save" style="width: 100%; background: #fff; color: #000; border: none;">Generate Roadmap</button>
+      
+      <div id="loading-container" style="display: none; margin-top: 1.5rem; text-align: center;">
+        <p style="color: rgba(255,255,255,0.7); margin-bottom: 1rem; font-size: 0.9rem;">Mapping coordinates...</p>
+        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
+          <div id="loading-bar" style="width: 0%; height: 100%; background: #fff; border-radius: 4px; transition: width 0.5s ease-out; box-shadow: 0 0 10px rgba(255,255,255,0.5);"></div>
         </div>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
 
+  const inputName = document.getElementById("mission-name");
   const input = document.getElementById("mission-input");
+  const inputDuration = document.getElementById("mission-duration");
   const btn = document.getElementById("mission-btn");
   const loadingContainer = document.getElementById("loading-container");
   const loadingBar = document.getElementById("loading-bar");
 
-  input.addEventListener("focus", () => input.style.borderColor = "var(--lime-crush)");
-  input.addEventListener("blur", () => input.style.borderColor = "rgba(255,255,255,0.2)");
-
   btn.addEventListener("click", async () => {
+    const name = inputName.value.trim();
     const topic = input.value.trim();
+    const duration = inputDuration.value.trim();
     if (!topic) return;
 
     // Start loading state
+    inputName.style.display = "none";
     input.style.display = "none";
+    inputDuration.style.display = "none";
     btn.style.display = "none";
     loadingContainer.style.display = "block";
 
@@ -204,7 +218,7 @@ function showNewMissionUI() {
 
       if (user && !isGuest) {
         // Authenticated user — generate plan server-side via Django
-        const result = await apiGeneratePlan(topic);
+        const result = await apiGeneratePlan(topic, name, duration);
         if (!result.plan || !Array.isArray(result.plan.phases) || result.plan.phases.length === 0) {
           throw new Error("AI failed to generate a valid plan. Please try a different topic.");
         }
@@ -218,7 +232,7 @@ function showNewMissionUI() {
         try {
           // Try to use server-side generation even for guests
           // This will fail with 401 since guest isn't authenticated
-          const result = await apiGeneratePlan(topic);
+          const result = await apiGeneratePlan(topic, name, duration);
           planData = result.plan;
         } catch (authErr) {
           // Guest can't use authenticated endpoint — use DEFAULT_PLAN with topic
@@ -506,5 +520,141 @@ if (phaseCol) {
     phaseCol.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
     phaseCol.style.setProperty('--mouse-x', `-1000px`);
     phaseCol.style.setProperty('--mouse-y', `-1000px`);
+  });
+}
+
+// --- Lock-in Mode Logic ---
+const lockinBtn = document.getElementById("lockin-btn");
+const lockinSetup = document.getElementById("lockin-setup");
+const lockinCancel = document.getElementById("lockin-cancel");
+const lockinStart = document.getElementById("lockin-start");
+const lockinDurationInput = document.getElementById("lockin-duration");
+const lockinYoutubeInput = document.getElementById("lockin-youtube");
+const lockinActiveHud = document.getElementById("lockin-active-hud");
+const lockinTimerText = document.getElementById("lockin-timer");
+const lockinExit = document.getElementById("lockin-exit");
+const youtubeContainer = document.getElementById("youtube-container");
+const dashboardHud = document.querySelector(".dashboard-hud");
+
+let lockinInterval = null;
+
+function extractVideoID(url) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function playLockinBeep() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+  osc.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+  
+  osc.start();
+  osc.stop(ctx.currentTime + 0.5);
+}
+
+function showLockinCompleteModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "lockin-overlay";
+  overlay.style.zIndex = "6000";
+  overlay.innerHTML = `
+    <div class="modal-panel" style="max-width: 400px; min-height: auto; text-align: center;">
+      <h2 class="modal-title" style="font-size: 1.8rem; color: var(--accent);">Focus Complete</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 2rem; font-size: 0.95rem;">You have successfully completed your lock-in session.</p>
+      <button class="modal-save" id="lockin-complete-btn" style="background: #fff; color: #000; border: none; width: 100%;">Acknowledge</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  
+  document.getElementById("lockin-complete-btn").addEventListener("click", () => {
+    overlay.remove();
+    lockinExit.click();
+  });
+}
+
+if (lockinBtn) {
+  lockinBtn.addEventListener("click", () => {
+    lockinSetup.style.display = "flex";
+  });
+
+  lockinCancel.addEventListener("click", () => {
+    lockinSetup.style.display = "none";
+  });
+
+  lockinStart.addEventListener("click", () => {
+    const duration = parseInt(lockinDurationInput.value, 10) || 25;
+    let durationSeconds = duration * 60;
+    
+    let videoId = extractVideoID(lockinYoutubeInput.value.trim());
+    if (!videoId) {
+      videoId = "jfKfPfyJRdk"; // Default Lofi Girl stream
+    }
+
+    lockinSetup.style.display = "none";
+    dashboardHud.style.display = "none";
+    lockinActiveHud.style.display = "flex";
+    
+    // Enter Fullscreen
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.warn(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    }
+    
+    // Set 3D scene to overview pan
+    scene.setPlanet(null);
+
+    // Embed youtube iframe with proper origin/referrer to prevent Error 153
+    const origin = window.location.origin;
+    youtubeContainer.innerHTML = `<iframe 
+      src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&origin=${encodeURIComponent(origin)}" 
+      allow="autoplay; encrypted-media" 
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen></iframe>`;
+
+    // Timer logic
+    const updateTimerDisplay = () => {
+      const m = Math.floor(durationSeconds / 60).toString().padStart(2, "0");
+      const s = (durationSeconds % 60).toString().padStart(2, "0");
+      lockinTimerText.textContent = `${m}:${s}`;
+    };
+    
+    updateTimerDisplay();
+    
+    if (lockinInterval) clearInterval(lockinInterval);
+    lockinInterval = setInterval(() => {
+      if (durationSeconds > 0) {
+        durationSeconds--;
+        updateTimerDisplay();
+      } else {
+        clearInterval(lockinInterval);
+        lockinTimerText.textContent = "00:00";
+        playLockinBeep();
+        showLockinCompleteModal();
+      }
+    }, 1000);
+  });
+
+  lockinExit.addEventListener("click", () => {
+    if (lockinInterval) clearInterval(lockinInterval);
+    lockinActiveHud.style.display = "none";
+    youtubeContainer.innerHTML = "";
+    dashboardHud.style.display = "flex";
+    
+    // Exit Fullscreen
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(err => {
+        console.warn(`Error attempting to exit fullscreen: ${err.message}`);
+      });
+    }
+    
+    // Re-render current phase to reset camera to planet
+    render(progressStore.getState());
   });
 }
