@@ -111,12 +111,21 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
-# CSRF — exempt API endpoints for simpler frontend integration
-# In production you'd want proper CSRF tokens
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
+# CSRF — allow local dev and all Render-hosted domains
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://*.onrender.com',
+]
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}")
 
-# Gemini API key (loaded from .env)
-GEMINI_API_KEY = os.environ.get('VITE_GEMINI_API_KEY', '')
+# Gemini API key — check both names for backwards compat with local .env
+GEMINI_API_KEY = (
+    os.environ.get('GEMINI_API_KEY')
+    or os.environ.get('VITE_GEMINI_API_KEY')
+    or ''
+)
 # Groq API key (loaded from .env)
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 

@@ -240,11 +240,12 @@ def generate_plan(request):
         if not api_key:
             return JsonResponse({'error': 'Gemini API key not configured on the server.'}, status=500)
 
-        # Try multiple models in order of preference
+        # Try newest models first — most likely to be available and fastest
         models_to_try = [
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
             "gemini-1.5-flash",
             "gemini-1.5-pro",
-            "gemini-2.0-flash",
         ]
 
         genai_client = genai.Client(api_key=api_key) if api_key else None
@@ -350,7 +351,6 @@ def generate_plan(request):
             user=request.user,
             topic=plan_data.get('topic', topic),
             status='confirmed',
-            data=plan_data
         )
 
         global_day_counter = 1
