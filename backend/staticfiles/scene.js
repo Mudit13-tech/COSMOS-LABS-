@@ -146,7 +146,7 @@ export function createPlanetGroup(name) {
   let normalMap = null;
   let bumpMap = TEXTURES.moon;
   let specularMap = null;
-  let color = 0xffffff;
+  let color = PLANET_COLORS[name] ? PLANET_COLORS[name].base : 0xffffff;
 
   if (name === "earth") {
     normalMap = TEXTURES.earthNormal;

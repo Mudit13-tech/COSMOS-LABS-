@@ -398,7 +398,6 @@ def generate_plan(request):
         return JsonResponse({'plan': plan.to_dict()})
         
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return JsonResponse({
             'error': f'Uncaught Server Error: {str(e)}',

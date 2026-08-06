@@ -18,7 +18,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 ALLOWED_HOSTS = ['*']
 # If RENDER_EXTERNAL_HOSTNAME is set (production), only allow that hostname
 if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
-    ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
+    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
 
 
 INSTALLED_APPS = [
@@ -73,7 +73,7 @@ DATABASES = {
 
 # In production on Render, a DATABASE_URL env var will be provided
 if os.environ.get('DATABASE_URL'):
-    DATABASES['default'] = dj_database_url.config(
+    DATABASES['default'] = dj_database_url.config(  # type: ignore
         default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,

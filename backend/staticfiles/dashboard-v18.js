@@ -104,18 +104,6 @@ async function boot() {
       }
     } catch (err) {
       console.error("Failed to load plan from server:", err);
-      // Fallback to localStorage
-      const savedPlan = localStorage.getItem("cosmoslab_guest_plan_data");
-      if (savedPlan) {
-        try {
-          const parsed = JSON.parse(savedPlan);
-          if (parsed && Array.isArray(parsed.phases) && parsed.phases.length > 0) {
-            setPlan(parsed);
-            await finalizeBoot(user, isGuest, "local-plan");
-            return;
-          }
-        } catch (e) { /* ignore */ }
-      }
       showNewMissionUI();
     }
   }
@@ -385,7 +373,17 @@ function render(state) {
   // Planet + phase heading.
   scene.setPlanet(phase.planet);
   els.breadcrumb.textContent = `${phase.planet.toUpperCase()} -- PHASE ${viewedPhaseIndex + 1}`;
-  els.heading.textContent = `Phase ${viewedPhaseIndex + 1}`;
+  els.heading.textContent = `Phase ${viewedPhaseIndex + 1}${phase.title ? `: ${phase.title}` : ""}`;
+  
+  let summaryEl = document.getElementById("phase-summary");
+  if (!summaryEl) {
+    summaryEl = document.createElement("p");
+    summaryEl.id = "phase-summary";
+    summaryEl.style = "color: var(--text-dim); margin-top: 0.5rem; font-size: 0.9rem; max-width: 600px; line-height: 1.4; margin-bottom: 2rem;";
+    els.heading.parentElement.insertAdjacentElement("afterend", summaryEl);
+  }
+  summaryEl.textContent = phase.summary || "";
+
   els.prevBtn.disabled = viewedPhaseIndex === 0;
   els.nextBtn.disabled = viewedPhaseIndex === plan.phases.length - 1;
 
@@ -458,6 +456,8 @@ function renderTimeline(phase, data) {
         <div style="font-size: 1rem; color: #fff; margin-top: 0.5rem; text-transform: uppercase; font-family: 'Space Mono', monospace; font-weight: bold;">
           ${task.title}
         </div>
+        ${task.description ? `<div style="font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-top: 0.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: 'Space Mono', monospace;">${task.description}</div>` : ""}
+        ${task.estMinutes ? `<div style="font-size: 0.75rem; color: var(--accent); margin-top: 0.75rem; font-family: 'Space Mono', monospace; letter-spacing: 0.05em;">⏱ ${task.estMinutes} MIN</div>` : ""}
       `;
 
       card.addEventListener("click", () => {
