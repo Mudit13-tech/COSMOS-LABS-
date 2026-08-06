@@ -92,6 +92,7 @@ USE_TZ = True
 # Static files — serve CSS/JS/assets from the project root
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+WHITENOISE_ROOT = PROJECT_ROOT
 
 STATICFILES_DIRS = [
     PROJECT_ROOT / 'css',
