@@ -4,6 +4,7 @@ Django settings for cosmoslab project.
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 
 # Load .env from project root (one level up from backend/)
 load_dotenv(Path(__file__).resolve().parent.parent.parent / '.env')
@@ -13,7 +14,12 @@ PROJECT_ROOT = BASE_DIR.parent  # cosmos-lab/
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret-key-change-in-production')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+
 ALLOWED_HOSTS = ['*']
+# If RENDER_EXTERNAL_HOSTNAME is set (production), only allow that hostname
+if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
+    ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -29,6 +35,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -64,6 +71,14 @@ DATABASES = {
     }
 }
 
+# In production on Render, a DATABASE_URL env var will be provided
+if os.environ.get('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
      'OPTIONS': {'min_length': 8}},
@@ -76,6 +91,8 @@ USE_TZ = True
 
 # Static files — serve CSS/JS/assets from the project root
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 STATICFILES_DIRS = [
     PROJECT_ROOT / 'css',
     PROJECT_ROOT / 'js',
