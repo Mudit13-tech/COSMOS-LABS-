@@ -17,18 +17,19 @@ const PLANET_COLORS = {
   neptune: { base: "#3b5bd9", shadow: "#0d1f7a", highlight: "#8ab4ff" },
 };
 
-// Rough relative sizes/framing observed in the reference capture --
-// Earth in particular reads intentionally smaller/farther than its
-// neighbors, so don't normalize every planet to the same radius.
+// Radii based on actual relative sizes (km), scaled so Jupiter ~5 units.
+// Real diameters: Mercury 4879, Venus 12104, Earth 12756, Mars 6792,
+//                 Jupiter 142984, Saturn 120536, Uranus 51118, Neptune 49528
+// We use a log-ish compression so inner planets aren't invisibly small.
 const PLANET_RADIUS = {
-  mercury: 2.4,
-  venus: 2.5,
-  earth: 2.4,
-  mars: 1.6,
-  jupiter: 3.4,
-  saturn: 3.0,
-  uranus: 2.6,
-  neptune: 2.5,
+  mercury: 1.0,
+  venus:   1.6,
+  earth:   1.7,
+  mars:    1.2,
+  jupiter: 5.0,
+  saturn:  4.2,
+  uranus:  2.8,
+  neptune: 2.7,
 };
 
 function noiseCanvasTexture(name) {
@@ -124,8 +125,8 @@ const TEXTURES = {
   mars: textureLoader.load("/assets/planet_texture_mars.png"),
   jupiter: textureLoader.load("/assets/planet_texture_jupiter.png"),
   saturn: textureLoader.load("/assets/planet_texture_saturn.png"),
-  uranus: textureLoader.load("/assets/planet_texture_uranus.jpg"),
-  neptune: textureLoader.load("/assets/planet_texture_neptune.jpg"),
+  uranus: textureLoader.load("/assets/planet_texture_uranus_2k.jpg"),
+  neptune: textureLoader.load("/assets/planet_texture_neptune_2k.jpg"),
   moon: textureLoader.load("https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg"),
   sun: textureLoader.load("/assets/sunmap.jpg"),
   asteroid: textureLoader.load("/assets/asteroid_texture.png"),
@@ -193,6 +194,26 @@ export function createPlanetGroup(name) {
 
   if (name === "saturn") {
     group.add(buildRing(radius * 1.4, radius * 2.3));
+  }
+
+  // Uranus has a faint ring system and its famous 98° axial tilt
+  if (name === "uranus") {
+    const uranusRingGeo = new THREE.RingGeometry(radius * 1.6, radius * 2.0, 128);
+    const uranusRingMat = new THREE.MeshStandardMaterial({
+      color: 0x88ccdd,
+      transparent: true,
+      opacity: 0.25,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      roughness: 0.9,
+      metalness: 0.0
+    });
+    const uranusRingMesh = new THREE.Mesh(uranusRingGeo, uranusRingMat);
+    uranusRingMesh.rotation.x = Math.PI / 2;
+    group.add(uranusRingMesh);
+    // Uranus spins nearly on its side
+    group.rotation.z = 98 * (Math.PI / 180);
   }
 
   return group;
@@ -307,7 +328,7 @@ export function initPlanetScene(canvas, { interactive = true } = {}) {
   // Create Solar System
   planetOrder.forEach((name, idx) => {
     // Distance from center (sun)
-    const distance = 12 + (idx * 15); // Tighter spacing to fit in view
+    const distance = 14 + (idx * 16); // Spacing: inner planets tight, outers spread out
     
     // Create crisp, high-resolution orbit line
     const segments = 512;
@@ -365,7 +386,7 @@ export function initPlanetScene(canvas, { interactive = true } = {}) {
   
   const dummy = new THREE.Object3D();
   for (let i = 0; i < beltCount; i++) {
-    const r = 63.5 + (Math.random() - 0.5) * 2; // Very thin belt between Mars and Jupiter
+    const r = 70 + (Math.random() - 0.5) * 4; // Thin belt between Mars and Jupiter orbits
     const theta = Math.random() * Math.PI * 2;
     const x = Math.cos(theta) * r;
     const y = (Math.random() - 0.5) * 1.5; // less vertical spread
@@ -512,7 +533,7 @@ export function initPlanetScene(canvas, { interactive = true } = {}) {
 
       // We want to be looking at the active planet closely from an angle
       // Offset slightly to the left (-2.7), up (1.5), and front (10.5)
-      targetCamPos.copy(worldPos).add(new THREE.Vector3(-2.7 * zoomFactor, 1.5 * zoomFactor, 10.5 * zoomFactor));
+      targetCamPos.copy(worldPos).add(new THREE.Vector3(-4.0 * zoomFactor, 2.5 * zoomFactor, 16.0 * zoomFactor));
       targetLookAt.copy(worldPos);
 
       // Lerp camera position faster during warp, slower normally
@@ -536,7 +557,7 @@ export function initPlanetScene(canvas, { interactive = true } = {}) {
     } else {
       // Login mode overview pan
       const time = Date.now() * 0.0001;
-      const radius = 135; // Outside the furthest planet (117)
+      const radius = 180; // Outside the furthest planet orbit
       targetCamPos.set(Math.cos(time) * radius, 45, Math.sin(time) * radius);
       targetLookAt.set(0, 0, 0);
 
