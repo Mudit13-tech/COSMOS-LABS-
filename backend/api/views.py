@@ -227,173 +227,183 @@ Return ONLY valid JSON. Make the roadmap comprehensive and realistic, with multi
 @require_auth
 def generate_plan(request):
     """Generate a new plan using Gemini AI, save to DB, and return it."""
-    data = json_body(request)
-    topic = data.get('topic', '').strip()
-    name = data.get('name', '').strip() or "the user"
-    duration = data.get('duration', '').strip() or "at their own pace"
+    try:
+        data = json_body(request)
+        topic = data.get('topic', '').strip()
+        name = data.get('name', '').strip() or "the user"
+        duration = data.get('duration', '').strip() or "at their own pace"
 
-    if not topic:
-        return JsonResponse({'error': 'Please provide a topic.'}, status=400)
+        if not topic:
+            return JsonResponse({'error': 'Please provide a topic.'}, status=400)
 
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        return JsonResponse({'error': 'Gemini API key not configured on the server.'}, status=500)
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            return JsonResponse({'error': 'Gemini API key not configured on the server.'}, status=500)
 
-    # Try multiple models in order of preference
-    models_to_try = [
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-2.0-flash",
-    ]
+        # Try multiple models in order of preference
+        models_to_try = [
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash",
+        ]
 
-    genai_client = genai.Client(api_key=api_key) if api_key else None
-    prompt = GEMINI_PROMPT.format(topic=topic, name=name, duration=duration)
+        genai_client = genai.Client(api_key=api_key) if api_key else None
+        prompt = GEMINI_PROMPT.format(topic=topic, name=name, duration=duration)
 
-    plan_data = None
-    last_error = None
-    
-    # --- Try Groq first if available ---
-    if getattr(settings, 'GROQ_API_KEY', None) and Groq:
-        try:
-            groq_client = Groq(api_key=settings.GROQ_API_KEY)
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                model="llama-3.3-70b-versatile",
-                response_format={"type": "json_object"},
-                temperature=0.7,
-            )
-            raw_text = chat_completion.choices[0].message.content or ""
-            raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
-            raw_text = re.sub(r'```$', '', raw_text).strip()
-            
-            temp_plan = json.loads(raw_text)
-            
-            # Basic validation
-            if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
-                plan_data = temp_plan
-        except Exception as e:
-            last_error = f'Groq failed: {str(e)}'
-            traceback.print_exc()
-
-    # --- Fallback to Gemini ---
-    if not plan_data and genai_client:
-        for model_name in models_to_try:
+        plan_data = None
+        last_error = None
+        
+        # --- Try Groq first if available ---
+        if getattr(settings, 'GROQ_API_KEY', None) and Groq:
             try:
-                response = genai_client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json"
-                    )
+                groq_client = Groq(api_key=settings.GROQ_API_KEY)
+                chat_completion = groq_client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    model="llama-3.3-70b-versatile",
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
                 )
-
-                raw_text = response.text or ""
-                # Clean up potential markdown wrapping
+                raw_text = chat_completion.choices[0].message.content or ""
                 raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
                 raw_text = re.sub(r'```$', '', raw_text).strip()
-
-                plan_data = json.loads(raw_text)
-
-                if not plan_data or not isinstance(plan_data.get('phases'), list) or len(plan_data['phases']) == 0:
-                    last_error = 'AI returned an invalid plan structure.'
-                    plan_data = None
-                    continue
-
-                # Validate each phase has days and tasks
-                valid = True
-                for phase in plan_data['phases']:
-                    if not isinstance(phase.get('days'), list) or len(phase['days']) == 0:
-                        valid = False
-                        break
-                    for day in phase['days']:
-                        if not isinstance(day.get('tasks'), list) or len(day['tasks']) == 0:
-                            valid = False
-                            break
-                    if not valid:
-                        break
-
-                if not valid:
-                    last_error = 'AI returned phases with missing days or tasks.'
-                    plan_data = None
-                    continue
-
-                break  # Success!
-
-            except json.JSONDecodeError as e:
-                last_error = f'AI returned invalid JSON: {str(e)}'
-                plan_data = None
+                
+                temp_plan = json.loads(raw_text)
+                
+                # Basic validation
+                if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
+                    plan_data = temp_plan
             except Exception as e:
-                err_str = str(e)
-                last_error = f'Model {model_name} failed: {err_str}'
-                # If it's a quota/rate-limit error, surface a clear message
-                if '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str or 'quota' in err_str.lower():
-                    last_error = (
-                        f'Gemini API quota exceeded for {model_name}. '
-                        'All free-tier models may be rate-limited. '
-                        'Please wait a minute and try again, or upgrade your Gemini API plan.'
-                    )
-                plan_data = None
+                last_error = f'Groq failed: {str(e)}'
                 traceback.print_exc()
 
-    if not plan_data:
-        return JsonResponse({'error': last_error or 'All AI models failed.'}, status=500)
+        # --- Fallback to Gemini ---
+        if not plan_data and genai_client:
+            for model_name in models_to_try:
+                try:
+                    response = genai_client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json"
+                        )
+                    )
 
-    # Deactivate any existing active plans for this user
-    Plan.objects.filter(user=request.user, is_active=True).update(is_active=False)
+                    raw_text = response.text or ""
+                    # Clean up potential markdown wrapping
+                    raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
+                    raw_text = re.sub(r'```$', '', raw_text).strip()
 
-    # Save the plan to the database
-    plan = Plan.objects.create(
-        user=request.user,
-        topic=plan_data.get('topic', topic),
-        status='confirmed',
-    )
+                    plan_data = json.loads(raw_text)
 
-    global_day_counter = 1
-    for phase_data in plan_data['phases']:
-        phase_index = phase_data.get('phaseIndex', 0)
-        planet = phase_data.get('planet', PLANET_ORDER[phase_index] if phase_index < len(PLANET_ORDER) else 'mercury')
+                    if not plan_data or not isinstance(plan_data.get('phases'), list) or len(plan_data['phases']) == 0:
+                        last_error = 'AI returned an invalid plan structure.'
+                        plan_data = None
+                        continue
 
-        phase = Phase.objects.create(
-            plan=plan,
-            phase_index=phase_index,
-            planet=planet.lower(),
-            title=phase_data.get('title', f'Phase {phase_index + 1}'),
-            summary=phase_data.get('summary', ''),
+                    # Validate each phase has days and tasks
+                    valid = True
+                    for phase in plan_data['phases']:
+                        if not isinstance(phase.get('days'), list) or len(phase['days']) == 0:
+                            valid = False
+                            break
+                        for day in phase['days']:
+                            if not isinstance(day.get('tasks'), list) or len(day['tasks']) == 0:
+                                valid = False
+                                break
+                        if not valid:
+                            break
+
+                    if not valid:
+                        last_error = 'AI returned phases with missing days or tasks.'
+                        plan_data = None
+                        continue
+
+                    break  # Success!
+
+                except json.JSONDecodeError as e:
+                    last_error = f'AI returned invalid JSON: {str(e)}'
+                    plan_data = None
+                except Exception as e:
+                    err_str = str(e)
+                    last_error = f'Model {model_name} failed: {err_str}'
+                    # If it's a quota/rate-limit error, surface a clear message
+                    if '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str or 'quota' in err_str.lower():
+                        last_error = (
+                            f'Gemini API quota exceeded for {model_name}. '
+                            'All free-tier models may be rate-limited. '
+                            'Please wait a minute and try again, or upgrade your Gemini API plan.'
+                        )
+                    plan_data = None
+                    traceback.print_exc()
+
+        if not plan_data:
+            return JsonResponse({'error': last_error or 'All AI models failed.'}, status=500)
+
+        # Deactivate any existing active plans for this user
+        Plan.objects.filter(user=request.user, is_active=True).update(is_active=False)
+
+        # Save the plan to the database
+        plan = Plan.objects.create(
+            user=request.user,
+            topic=plan_data.get('topic', topic),
+            status='confirmed',
+            data=plan_data
         )
 
-        for day_data in phase_data.get('days', []):
-            day_index = day_data.get('dayIndex', global_day_counter)
-            day = Day.objects.create(
-                phase=phase,
-                day_index=day_index,
+        global_day_counter = 1
+        for phase_data in plan_data['phases']:
+            phase_index = phase_data.get('phaseIndex', 0)
+            planet = phase_data.get('planet', PLANET_ORDER[phase_index] if phase_index < len(PLANET_ORDER) else 'mercury')
+
+            phase = Phase.objects.create(
+                plan=plan,
+                phase_index=phase_index,
+                planet=planet.lower(),
+                title=phase_data.get('title', f'Phase {phase_index + 1}'),
+                summary=phase_data.get('summary', ''),
             )
-            global_day_counter = day_index + 1
 
-            for t_idx, t_data in enumerate(day_data.get('tasks', [])):
-                Task.objects.create(
-                    day=day,
-                    task_id=t_data.get('id', f't{phase_index}-{t_idx}'),
-                    title=t_data.get('title', 'Untitled task'),
-                    tags=t_data.get('tags', []),
-                    est_minutes=t_data.get('estMinutes', 60),
-                    description=t_data.get('description', ''),
-                    resource_links=t_data.get('resourceLinks', []),
-                    systems_init=t_data.get('systemsInit', ''),
-                    observed=t_data.get('observed', False),
+            for day_data in phase_data.get('days', []):
+                day_index = day_data.get('dayIndex', global_day_counter)
+                day = Day.objects.create(
+                    phase=phase,
+                    day_index=day_index,
                 )
+                global_day_counter = day_index + 1
 
-    # Create initial progress record
-    num_phases = len(plan_data['phases'])
-    Progress.objects.create(
-        user=request.user,
-        plan=plan,
-        phase_unlocked=[i == 0 for i in range(num_phases)],
-    )
+                for t_idx, t_data in enumerate(day_data.get('tasks', [])):
+                    Task.objects.create(
+                        day=day,
+                        task_id=t_data.get('id', f't{phase_index}-{t_idx}'),
+                        title=t_data.get('title', 'Untitled task'),
+                        tags=t_data.get('tags', []),
+                        est_minutes=t_data.get('estMinutes', 60),
+                        description=t_data.get('description', ''),
+                        resource_links=t_data.get('resourceLinks', []),
+                        systems_init=t_data.get('systemsInit', ''),
+                        observed=t_data.get('observed', False),
+                    )
 
-    return JsonResponse({'plan': plan.to_dict()})
+        # Create initial progress record
+        num_phases = len(plan_data['phases'])
+        Progress.objects.create(
+            user=request.user,
+            plan=plan,
+            phase_unlocked=[i == 0 for i in range(num_phases)],
+        )
+
+        return JsonResponse({'plan': plan.to_dict()})
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Uncaught Server Error: {str(e)}',
+            'traceback': traceback.format_exc()
+        }, status=500)
 
 
 @csrf_exempt

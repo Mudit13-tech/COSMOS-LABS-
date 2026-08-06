@@ -9,3 +9,4 @@ backend/**/__pycache__/
 backend/**/migrations/
 *.pyc
 node_modules/
+backend/staticfiles/
