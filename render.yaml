@@ -3,7 +3,7 @@ services:
     name: cosmos-lab
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn cosmoslab.wsgi:application --config gunicorn.conf.py"
+    startCommand: "./start.sh"
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
