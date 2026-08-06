@@ -379,7 +379,7 @@ function render(state) {
   if (!summaryEl) {
     summaryEl = document.createElement("p");
     summaryEl.id = "phase-summary";
-    summaryEl.style = "font-family: 'Atomic Age', cursive; color: var(--text-dim); margin-top: 0.5rem; font-size: 0.95rem; max-width: 600px; line-height: 1.4; margin-bottom: 2rem;";
+    summaryEl.style = "font-family: 'Bitcount-Grid-Single', cursive; color: var(--text-dim); margin-top: 0.5rem; font-size: 0.95rem; max-width: 600px; line-height: 1.4; margin-bottom: 2rem;";
     els.heading.parentElement.insertAdjacentElement("afterend", summaryEl);
   }
   summaryEl.textContent = phase.summary || "";
