@@ -13,6 +13,8 @@ const PLANET_COLORS = {
   mars: { base: "#a6432c", shadow: "#3a140c", highlight: "#e0a98a" },
   jupiter: { base: "#c9975b", shadow: "#7a4f24", highlight: "#f3e2c0" },
   saturn: { base: "#d8c58e", shadow: "#8a7745", highlight: "#fff3d6" },
+  uranus: { base: "#7de8e8", shadow: "#2a8a8a", highlight: "#c8ffff" },
+  neptune: { base: "#3b5bd9", shadow: "#0d1f7a", highlight: "#8ab4ff" },
 };
 
 // Rough relative sizes/framing observed in the reference capture --
@@ -25,6 +27,8 @@ const PLANET_RADIUS = {
   mars: 1.6,
   jupiter: 3.4,
   saturn: 3.0,
+  uranus: 2.6,
+  neptune: 2.5,
 };
 
 function noiseCanvasTexture(name) {

@@ -91,6 +91,7 @@ class Task(models.Model):
     tags = models.JSONField(default=list)
     est_minutes = models.IntegerField(default=60)
     description = models.TextField(blank=True, default='')
+    resource_links = models.JSONField(default=list, blank=True)
     systems_init = models.CharField(max_length=200, blank=True, default='')
     observed = models.BooleanField(default=False)
 
@@ -104,6 +105,7 @@ class Task(models.Model):
             'tags': self.tags,
             'estMinutes': self.est_minutes,
             'description': self.description,
+            'resourceLinks': self.resource_links,
             'systemsInit': self.systems_init,
             'observed': self.observed,
         }

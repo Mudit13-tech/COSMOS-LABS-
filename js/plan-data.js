@@ -141,10 +141,37 @@ export const DEFAULT_PLAN = {
         day(40, [task("t40-1", "Performance audit (Lighthouse, bundle size)", ["PERFORMANCE"], 120)]),
         day(41, [task("t41-1", "Security review and dependency audit", ["SECURITY"], 90)]),
         day(42, [task("t42-1", "Launch checklist and monitoring setup", ["OPS"], 90)]),
-        day(43, [
-          task("t43-1", "Mission Complete & Portfolio prep", ["WRAP-UP"], 120, {
+      ],
+    },
+    {
+      phaseIndex: 6,
+      planet: "uranus",
+      title: "Advanced Frontiers",
+      summary: "Cutting-edge features, plugins, and extensibility.",
+      days: [
+        day(43, [task("t43-1", "Design a plugin / extension API", ["ARCHITECTURE"], 150)]),
+        day(44, [task("t44-1", "Implement a public plugin registry", ["PLATFORM"], 120)]),
+        day(45, [task("t45-1", "Add WebAssembly module for heavy computation", ["WASM", "PERFORMANCE"], 180)]),
+        day(46, [task("t46-1", "Offline-first PWA: service workers and cache", ["PWA"], 150)]),
+        day(47, [task("t47-1", "Advanced animation timeline editor", ["UI", "ANIMATION"], 150)]),
+        day(48, [task("t48-1", "AI-assisted design suggestions via API", ["AI", "UX"], 180)]),
+      ],
+    },
+    {
+      phaseIndex: 7,
+      planet: "neptune",
+      title: "Mastery & Beyond",
+      summary: "Reflect, document, open-source, and grow the ecosystem.",
+      days: [
+        day(49, [task("t49-1", "Write comprehensive developer docs", ["DOCS"], 150)]),
+        day(50, [task("t50-1", "Record demo and tutorial screencasts", ["CONTENT"], 120)]),
+        day(51, [task("t51-1", "Open-source the repo with MIT license", ["OPEN SOURCE"], 90)]),
+        day(52, [task("t52-1", "Community launch: HN, Product Hunt, Twitter", ["MARKETING"], 120)]),
+        day(53, [task("t53-1", "Gather user feedback and plan v2 roadmap", ["STRATEGY"], 120)]),
+        day(54, [
+          task("t54-1", "Mission Complete & Portfolio prep", ["WRAP-UP"], 120, {
             observed: true,
-            description: "Write up the project for your portfolio: problem, approach, and what you'd do differently.",
+            description: "Write up the full journey: what you built, what you learned, and what comes next.",
           }),
         ]),
       ],

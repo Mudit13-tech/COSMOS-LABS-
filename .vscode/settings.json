@@ -2,5 +2,7 @@
     "python.defaultInterpreterPath": "/Users/muditgolchha/Desktop/cosmos-lab/backend/venv/bin/python",
     "python.analysis.extraPaths": [
         "${workspaceFolder}/backend"
-    ]
+    ],
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000
 }

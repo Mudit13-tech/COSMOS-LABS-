@@ -19,6 +19,11 @@ from .models import Plan, Phase, Day, Task, Progress
 from google import genai
 from google.genai import types
 
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
+
 
 # ---- Helper ---------------------------------------------------------------
 
@@ -126,11 +131,13 @@ def get_plan(request):
 
 PLANET_ORDER = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']
 
-GEMINI_PROMPT = """You are a master technical planner and architect. The user wants to learn or build: "{topic}".
-Create a detailed, day-by-day curriculum or roadmap divided into exactly 8 phases.
+GEMINI_PROMPT = """You are a master technical planner and architect. The user ({name}) wants to learn or build: "{topic}".
+They have specified the following duration/timeline for this goal: "{duration}".
+Create a detailed, day-by-day curriculum or roadmap divided into exactly 8 phases, tailored to the requested duration.
 The phases must map to these 8 planets in order: mercury, venus, earth, mars, jupiter, saturn, uranus, neptune.
 Each phase should have a title, a short summary, and an array of days.
 Each day should have a list of tasks.
+For each task, you MUST include a "resourceLinks" array with required documents, articles, or YouTube links (full URLs) for that day's work if available.
 Return ONLY valid JSON matching this schema:
 {{
   "topic": "String",
@@ -150,7 +157,8 @@ Return ONLY valid JSON matching this schema:
               "title": "String",
               "tags": ["String"],
               "estMinutes": Number,
-              "description": "String"
+              "description": "String",
+              "resourceLinks": ["String (URL)"]
             }}
           ]
         }}
@@ -169,6 +177,8 @@ def generate_plan(request):
     """Generate a new plan using Gemini AI, save to DB, and return it."""
     data = json_body(request)
     topic = data.get('topic', '').strip()
+    name = data.get('name', '').strip() or "the user"
+    duration = data.get('duration', '').strip() or "at their own pace"
 
     if not topic:
         return JsonResponse({'error': 'Please provide a topic.'}, status=400)
@@ -181,63 +191,102 @@ def generate_plan(request):
     models_to_try = [
         "gemini-2.5-flash",
         "gemini-2.0-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash-8b",
     ]
 
-    genai_client = genai.Client(api_key=api_key)
-    prompt = GEMINI_PROMPT.format(topic=topic)
+    genai_client = genai.Client(api_key=api_key) if api_key else None
+    prompt = GEMINI_PROMPT.format(topic=topic, name=name, duration=duration)
 
     plan_data = None
     last_error = None
-
-    for model_name in models_to_try:
+    
+    # --- Try Groq first if available ---
+    if getattr(settings, 'GROQ_API_KEY', None) and Groq:
         try:
-            response = genai_client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                )
+            groq_client = Groq(api_key=settings.GROQ_API_KEY)
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                model="llama-3.3-70b-versatile",
+                response_format={"type": "json_object"},
+                temperature=0.7,
             )
-
-            raw_text = response.text or ""
-            # Clean up potential markdown wrapping
+            raw_text = chat_completion.choices[0].message.content or ""
             raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
             raw_text = re.sub(r'```$', '', raw_text).strip()
+            
+            temp_plan = json.loads(raw_text)
+            
+            # Basic validation
+            if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
+                plan_data = temp_plan
+        except Exception as e:
+            last_error = f'Groq failed: {str(e)}'
+            traceback.print_exc()
 
-            plan_data = json.loads(raw_text)
+    # --- Fallback to Gemini ---
+    if not plan_data and genai_client:
+        for model_name in models_to_try:
+            try:
+                response = genai_client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
 
-            if not plan_data or not isinstance(plan_data.get('phases'), list) or len(plan_data['phases']) == 0:
-                last_error = 'AI returned an invalid plan structure.'
-                plan_data = None
-                continue
+                raw_text = response.text or ""
+                # Clean up potential markdown wrapping
+                raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
+                raw_text = re.sub(r'```$', '', raw_text).strip()
 
-            # Validate each phase has days and tasks
-            valid = True
-            for phase in plan_data['phases']:
-                if not isinstance(phase.get('days'), list) or len(phase['days']) == 0:
-                    valid = False
-                    break
-                for day in phase['days']:
-                    if not isinstance(day.get('tasks'), list) or len(day['tasks']) == 0:
+                plan_data = json.loads(raw_text)
+
+                if not plan_data or not isinstance(plan_data.get('phases'), list) or len(plan_data['phases']) == 0:
+                    last_error = 'AI returned an invalid plan structure.'
+                    plan_data = None
+                    continue
+
+                # Validate each phase has days and tasks
+                valid = True
+                for phase in plan_data['phases']:
+                    if not isinstance(phase.get('days'), list) or len(phase['days']) == 0:
                         valid = False
                         break
+                    for day in phase['days']:
+                        if not isinstance(day.get('tasks'), list) or len(day['tasks']) == 0:
+                            valid = False
+                            break
+                    if not valid:
+                        break
+
                 if not valid:
-                    break
+                    last_error = 'AI returned phases with missing days or tasks.'
+                    plan_data = None
+                    continue
 
-            if not valid:
-                last_error = 'AI returned phases with missing days or tasks.'
+                break  # Success!
+
+            except json.JSONDecodeError as e:
+                last_error = f'AI returned invalid JSON: {str(e)}'
                 plan_data = None
-                continue
-
-            break  # Success!
-
-        except json.JSONDecodeError as e:
-            last_error = f'AI returned invalid JSON: {str(e)}'
-            plan_data = None
-        except Exception as e:
-            last_error = f'Model {model_name} failed: {str(e)}'
-            plan_data = None
-            traceback.print_exc()
+            except Exception as e:
+                err_str = str(e)
+                last_error = f'Model {model_name} failed: {err_str}'
+                # If it's a quota/rate-limit error, surface a clear message
+                if '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str or 'quota' in err_str.lower():
+                    last_error = (
+                        f'Gemini API quota exceeded for {model_name}. '
+                        'All free-tier models may be rate-limited. '
+                        'Please wait a minute and try again, or upgrade your Gemini API plan.'
+                    )
+                plan_data = None
+                traceback.print_exc()
 
     if not plan_data:
         return JsonResponse({'error': last_error or 'All AI models failed.'}, status=500)
@@ -273,16 +322,17 @@ def generate_plan(request):
             )
             global_day_counter = day_index + 1
 
-            for task_data in day_data.get('tasks', []):
+            for t_idx, t_data in enumerate(day_data.get('tasks', [])):
                 Task.objects.create(
                     day=day,
-                    task_id=task_data.get('id', f't{day_index}-1'),
-                    title=task_data.get('title', 'Untitled task'),
-                    tags=task_data.get('tags', []),
-                    est_minutes=task_data.get('estMinutes', 60),
-                    description=task_data.get('description', ''),
-                    systems_init=task_data.get('systemsInit', ''),
-                    observed=task_data.get('observed', False),
+                    task_id=t_data.get('id', f't{phase_index}-{t_idx}'),
+                    title=t_data.get('title', 'Untitled task'),
+                    tags=t_data.get('tags', []),
+                    est_minutes=t_data.get('estMinutes', 60),
+                    description=t_data.get('description', ''),
+                    resource_links=t_data.get('resourceLinks', []),
+                    systems_init=t_data.get('systemsInit', ''),
+                    observed=t_data.get('observed', False),
                 )
 
     # Create initial progress record

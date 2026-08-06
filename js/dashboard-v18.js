@@ -421,45 +421,53 @@ function renderTimeline(phase, data) {
     }
     row.appendChild(dotCol);
 
-    const task = day.tasks[0];
-    if (!task) return; // Skip days with no tasks (shouldn't happen with validation)
-    const done = Boolean(data.completedTasks[task.id]);
-    const isActive = day.dayIndex === activeDayIndex;
+    const cardsCol = document.createElement("div");
+    cardsCol.className = "day-cards-col";
+    cardsCol.style.display = "flex";
+    cardsCol.style.flexDirection = "column";
+    cardsCol.style.gap = "var(--space-3)";
+    cardsCol.style.flex = "1";
 
-    const card = document.createElement("div");
-    card.className = "day-card" + (isActive ? " active" : "");
-    card.tabIndex = 0;
-    card.setAttribute("role", "button");
-    card.innerHTML = `
-      <div class="day-card-head">
-        <span class="day-check" aria-hidden="true">${done ? "&#10003;" : "&nbsp;"}</span>
-        <span>DAY ${String(day.dayIndex).padStart(2, "0")}</span>
-      </div>
-      <div style="font-size: 1rem; color: #fff; margin-top: 0.5rem; text-transform: uppercase; font-family: 'Space Mono', monospace; font-weight: bold;">
-        ${task ? task.title : "No task"}
-      </div>
-    `;
+    day.tasks.forEach((task) => {
+      const done = Boolean(data.completedTasks[task.id]);
+      const isActive = day.dayIndex === activeDayIndex;
 
-    card.addEventListener("click", () => {
-      const existing = data.completedTasks[task.id] || {};
-      openMissionModal({
-        day,
-        task,
-        existing,
-        onSave: async ({ note, loggedMinutes }) => {
-          await completeTask(task.id, day.dayIndex, phaseIdx, { note, loggedMinutes });
-          showToast("TELEMETRY LOG UPDATED");
-        },
+      const card = document.createElement("div");
+      card.className = "day-card" + (isActive ? " active" : "");
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.innerHTML = `
+        <div class="day-card-head">
+          <span class="day-check" aria-hidden="true">${done ? "&#10003;" : "&nbsp;"}</span>
+          <span>DAY ${String(day.dayIndex).padStart(2, "0")}</span>
+        </div>
+        <div style="font-size: 1rem; color: #fff; margin-top: 0.5rem; text-transform: uppercase; font-family: 'Space Mono', monospace; font-weight: bold;">
+          ${task.title}
+        </div>
+      `;
+
+      card.addEventListener("click", () => {
+        const existing = data.completedTasks[task.id] || {};
+        openMissionModal({
+          day,
+          task,
+          existing,
+          onSave: async ({ note, loggedMinutes }) => {
+            await completeTask(task.id, day.dayIndex, phaseIdx, { note, loggedMinutes });
+            showToast("TELEMETRY LOG UPDATED");
+          },
+        });
       });
-    });
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        card.click();
-      }
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          card.click();
+        }
+      });
+      cardsCol.appendChild(card);
     });
 
-    row.appendChild(card);
+    row.appendChild(cardsCol);
     els.timeline.appendChild(row);
   });
 }

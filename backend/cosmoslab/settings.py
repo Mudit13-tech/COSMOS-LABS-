@@ -100,3 +100,5 @@ CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
 
 # Gemini API key (loaded from .env)
 GEMINI_API_KEY = os.environ.get('VITE_GEMINI_API_KEY', '')
+# Groq API key (loaded from .env)
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
