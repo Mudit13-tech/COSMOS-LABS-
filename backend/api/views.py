@@ -194,10 +194,10 @@ def generate_plan(request):
 
         # --- Groq (sole AI provider) — try models in order until one works ---
         GROQ_MODELS = [
-            "llama3-70b-8192",
-            "llama-3.1-70b-versatile",
-            "mixtral-8x7b-32768",
-            "llama3-8b-8192",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "llama3-groq-70b-8192-tool-use-preview",
+            "gemma2-9b-it",
         ]
 
         groq_client = Groq(api_key=settings.GROQ_API_KEY)
@@ -230,12 +230,12 @@ def generate_plan(request):
             except Exception as e:
                 err_str = str(e)
                 last_error = f'Groq ({model_name}) failed: {err_str}'
-                # Only skip to the next model on 404/model_not_found errors
-                if '404' in err_str or 'model_not_found' in err_str or 'does not exist' in err_str:
+                # Skip to the next model on any model-availability error (404, 400 decommissioned, etc.)
+                if any(k in err_str for k in ['404', '400', 'model_not_found', 'model_decommissioned', 'does not exist', 'decommissioned']):
                     traceback.print_exc()
                     continue
                 traceback.print_exc()
-                break  # Other errors (auth, quota, etc.) — no point retrying
+                break  # Other errors (auth, quota, network) — no point retrying
 
         if not plan_data:
             return JsonResponse({'error': last_error or 'Groq AI failed to generate a plan.'}, status=500)
