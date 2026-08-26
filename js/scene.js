@@ -128,7 +128,7 @@ const TEXTURES = {
   uranus: textureLoader.load("/assets/planet_texture_uranus_2k.jpg"),
   neptune: textureLoader.load("/assets/planet_texture_neptune_2k.jpg"),
   moon: textureLoader.load("https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg"),
-  sun: textureLoader.load("/assets/sunmap2.jpg"),
+  sun: textureLoader.load("/assets/sunmap.jpg"),
   asteroid: textureLoader.load("/assets/asteroid_texture.png"),
   saturnRing: textureLoader.load("/assets/saturn_ring_texture.png")
 };
