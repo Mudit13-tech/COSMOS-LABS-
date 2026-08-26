@@ -120,12 +120,6 @@ CSRF_TRUSTED_ORIGINS = [
 if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
     CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}")
 
-# Gemini API key — check both names for backwards compat with local .env
-GEMINI_API_KEY = (
-    os.environ.get('GEMINI_API_KEY')
-    or os.environ.get('VITE_GEMINI_API_KEY')
-    or ''
-)
 # Groq API key (loaded from .env)
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 

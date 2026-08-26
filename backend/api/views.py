@@ -1,6 +1,6 @@
 """
 API views for Cosmos Lab.
-Handles authentication, plan generation (with Gemini), and progress tracking.
+Handles authentication, plan generation (with Groq), and progress tracking.
 """
 import json
 import re
@@ -15,9 +15,6 @@ from django.contrib.auth.models import User
 from django.conf import settings
 
 from .models import Plan, Phase, Day, Task, Progress
-
-from google import genai
-from google.genai import types
 
 try:
     from groq import Groq
@@ -175,7 +172,7 @@ Return ONLY valid JSON. Make the roadmap comprehensive and realistic, with multi
 @require_http_methods(["POST"])
 @require_auth
 def generate_plan(request):
-    """Generate a new plan using Gemini AI, save to DB, and return it."""
+    """Generate a new plan using Groq AI, save to DB, and return it."""
     try:
         data = json_body(request)
         topic = data.get('topic', '').strip()
@@ -185,112 +182,47 @@ def generate_plan(request):
         if not topic:
             return JsonResponse({'error': 'Please provide a topic.'}, status=400)
 
-        api_key = settings.GEMINI_API_KEY
-        if not api_key:
-            return JsonResponse({'error': 'Gemini API key not configured on the server.'}, status=500)
+        if not getattr(settings, 'GROQ_API_KEY', None):
+            return JsonResponse({'error': 'Groq API key not configured on the server.'}, status=500)
+        if not Groq:
+            return JsonResponse({'error': 'Groq library is not installed on the server.'}, status=500)
 
-        # Try newest models first — most likely to be available and fastest
-        models_to_try = [
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-        ]
-
-        genai_client = genai.Client(api_key=api_key) if api_key else None
         prompt = GEMINI_PROMPT.format(topic=topic, name=name, duration=duration)
 
         plan_data = None
         last_error = None
-        
-        # --- Try Groq first if available ---
-        if getattr(settings, 'GROQ_API_KEY', None) and Groq:
-            try:
-                groq_client = Groq(api_key=settings.GROQ_API_KEY)
-                chat_completion = groq_client.chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    model="llama-3.3-70b-versatile",
-                    response_format={"type": "json_object"},
-                    temperature=0.7,
-                )
-                raw_text = chat_completion.choices[0].message.content or ""
-                raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
-                raw_text = re.sub(r'```$', '', raw_text).strip()
-                
-                temp_plan = json.loads(raw_text)
-                
-                # Basic validation
-                if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
-                    plan_data = temp_plan
-            except Exception as e:
-                last_error = f'Groq failed: {str(e)}'
-                traceback.print_exc()
 
-        # --- Fallback to Gemini ---
-        if not plan_data and genai_client:
-            for model_name in models_to_try:
-                try:
-                    response = genai_client.models.generate_content(
-                        model=model_name,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json"
-                        )
-                    )
+        # --- Groq (sole AI provider) ---
+        try:
+            groq_client = Groq(api_key=settings.GROQ_API_KEY)
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                model="llama-3.3-70b-versatile",
+                response_format={"type": "json_object"},
+                temperature=0.7,
+            )
+            raw_text = chat_completion.choices[0].message.content or ""
+            raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
+            raw_text = re.sub(r'```$', '', raw_text).strip()
 
-                    raw_text = response.text or ""
-                    # Clean up potential markdown wrapping
-                    raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
-                    raw_text = re.sub(r'```$', '', raw_text).strip()
+            temp_plan = json.loads(raw_text)
 
-                    plan_data = json.loads(raw_text)
-
-                    if not plan_data or not isinstance(plan_data.get('phases'), list) or len(plan_data['phases']) == 0:
-                        last_error = 'AI returned an invalid plan structure.'
-                        plan_data = None
-                        continue
-
-                    # Validate each phase has days and tasks
-                    valid = True
-                    for phase in plan_data['phases']:
-                        if not isinstance(phase.get('days'), list) or len(phase['days']) == 0:
-                            valid = False
-                            break
-                        for day in phase['days']:
-                            if not isinstance(day.get('tasks'), list) or len(day['tasks']) == 0:
-                                valid = False
-                                break
-                        if not valid:
-                            break
-
-                    if not valid:
-                        last_error = 'AI returned phases with missing days or tasks.'
-                        plan_data = None
-                        continue
-
-                    break  # Success!
-
-                except json.JSONDecodeError as e:
-                    last_error = f'AI returned invalid JSON: {str(e)}'
-                    plan_data = None
-                except Exception as e:
-                    err_str = str(e)
-                    last_error = f'Model {model_name} failed: {err_str}'
-                    # If it's a quota/rate-limit error, surface a clear message
-                    if '429' in err_str or 'RESOURCE_EXHAUSTED' in err_str or 'quota' in err_str.lower():
-                        last_error = (
-                            f'Gemini API quota exceeded for {model_name}. '
-                            'All free-tier models may be rate-limited. '
-                            'Please wait a minute and try again, or upgrade your Gemini API plan.'
-                        )
-                    plan_data = None
-                    traceback.print_exc()
+            if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
+                plan_data = temp_plan
+            else:
+                last_error = 'Groq returned an invalid plan structure.'
+        except json.JSONDecodeError as e:
+            last_error = f'Groq returned invalid JSON: {str(e)}'
+            traceback.print_exc()
+        except Exception as e:
+            last_error = f'Groq failed: {str(e)}'
+            traceback.print_exc()
 
         if not plan_data:
-            return JsonResponse({'error': last_error or 'All AI models failed.'}, status=500)
+            return JsonResponse({'error': last_error or 'Groq AI failed to generate a plan.'}, status=500)
 
         # Deactivate any existing active plans for this user
         Plan.objects.filter(user=request.user, is_active=True).update(is_active=False)
