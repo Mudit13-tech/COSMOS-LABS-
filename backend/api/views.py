@@ -194,7 +194,6 @@ def generate_plan(request):
 
         # --- Groq (sole AI provider) — try models in order until one works ---
         GROQ_MODELS = [
-            "llama-3.3-70b-versatile",
             "llama3-70b-8192",
             "llama-3.1-70b-versatile",
             "mixtral-8x7b-32768",
