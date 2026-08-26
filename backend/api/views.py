@@ -192,34 +192,51 @@ def generate_plan(request):
         plan_data = None
         last_error = None
 
-        # --- Groq (sole AI provider) ---
-        try:
-            groq_client = Groq(api_key=settings.GROQ_API_KEY)
-            chat_completion = groq_client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                model="llama-3.3-70b-versatile",
-                response_format={"type": "json_object"},
-                temperature=0.7,
-            )
-            raw_text = chat_completion.choices[0].message.content or ""
-            raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
-            raw_text = re.sub(r'```$', '', raw_text).strip()
+        # --- Groq (sole AI provider) — try models in order until one works ---
+        GROQ_MODELS = [
+            "llama-3.3-70b-versatile",
+            "llama3-70b-8192",
+            "llama-3.1-70b-versatile",
+            "mixtral-8x7b-32768",
+            "llama3-8b-8192",
+        ]
 
-            temp_plan = json.loads(raw_text)
+        groq_client = Groq(api_key=settings.GROQ_API_KEY)
+        for model_name in GROQ_MODELS:
+            try:
+                chat_completion = groq_client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that ALWAYS outputs valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    model=model_name,
+                    response_format={"type": "json_object"},
+                    temperature=0.7,
+                )
+                raw_text = chat_completion.choices[0].message.content or ""
+                raw_text = re.sub(r'^```(json)?', '', raw_text).strip()
+                raw_text = re.sub(r'```$', '', raw_text).strip()
 
-            if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
-                plan_data = temp_plan
-            else:
-                last_error = 'Groq returned an invalid plan structure.'
-        except json.JSONDecodeError as e:
-            last_error = f'Groq returned invalid JSON: {str(e)}'
-            traceback.print_exc()
-        except Exception as e:
-            last_error = f'Groq failed: {str(e)}'
-            traceback.print_exc()
+                temp_plan = json.loads(raw_text)
+
+                if temp_plan and isinstance(temp_plan.get('phases'), list) and len(temp_plan['phases']) > 0:
+                    plan_data = temp_plan
+                    break  # Success!
+                else:
+                    last_error = f'Groq ({model_name}) returned an invalid plan structure.'
+            except json.JSONDecodeError as e:
+                last_error = f'Groq ({model_name}) returned invalid JSON: {str(e)}'
+                traceback.print_exc()
+                break  # JSON issues won't be fixed by trying another model
+            except Exception as e:
+                err_str = str(e)
+                last_error = f'Groq ({model_name}) failed: {err_str}'
+                # Only skip to the next model on 404/model_not_found errors
+                if '404' in err_str or 'model_not_found' in err_str or 'does not exist' in err_str:
+                    traceback.print_exc()
+                    continue
+                traceback.print_exc()
+                break  # Other errors (auth, quota, etc.) — no point retrying
 
         if not plan_data:
             return JsonResponse({'error': last_error or 'Groq AI failed to generate a plan.'}, status=500)
