@@ -194,10 +194,9 @@ def generate_plan(request):
 
         # --- Groq (sole AI provider) — try models in order until one works ---
         GROQ_MODELS = [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "llama3-groq-70b-8192-tool-use-preview",
-            "gemma2-9b-it",
+            "openai/gpt-oss-120b",   # replaces llama-3.3-70b-versatile
+            "qwen/qwen3.6-27b",      # alternative for llama-3.3-70b-versatile
+            "openai/gpt-oss-20b",    # replaces llama-3.1-8b-instant
         ]
 
         groq_client = Groq(api_key=settings.GROQ_API_KEY)
